@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Resume Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="resume-container">
+    <h1>AI Resume & Cover Letter Generator</h1>
+
+    <form id="resumeForm">
+      <input type="text" id="name" placeholder="Your Name" required />
+      <input type="text" id="education" placeholder="Education Details" required />
+      <input type="text" id="experience" placeholder="Experience Details" required />
+      <input type="text" id="jobRole" placeholder="Job Role" required />
+      <button type="submit">Generate</button>
+    </form>
+
+    <div id="output" style="display:none;">
+      <div class="output-box">
+        <h2>Resume</h2>
+        <pre id="resume"></pre>
+        <button id="downloadResume">Download Resume</button>
+      </div>
+
+      <div class="output-box">
+        <h2>Cover Letter</h2>
+        <pre id="coverLetter"></pre>
+        <button id="downloadCover">Download Cover Letter</button>
+      </div>
+
+      <div id="error"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
