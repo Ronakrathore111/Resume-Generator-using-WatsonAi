@@ -4,11 +4,15 @@ const cors = require('cors');
 const axios = require('axios');
 const qs = require('qs');
 const fs = require('fs');
+
 const app = express();
 const port = 3000;
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// 🔐 IBM Token
 async function getIBMIAMToken(apiKey) {
   try {
     const response = await axios.post(
@@ -18,9 +22,7 @@ async function getIBMIAMToken(apiKey) {
         apikey: apiKey,
       }),
       {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       }
     );
     return response.data.access_token;
@@ -29,10 +31,11 @@ async function getIBMIAMToken(apiKey) {
     throw new Error('Token request failed');
   }
 }
+
+// 🔐 User Auth
 function loadUsers() {
   try {
-    const data = fs.readFileSync('users.json');
-    return JSON.parse(data);
+    return JSON.parse(fs.readFileSync('users.json'));
   } catch {
     return [];
   }
@@ -41,6 +44,7 @@ function loadUsers() {
 function saveUsers(users) {
   fs.writeFileSync('users.json', JSON.stringify(users, null, 2));
 }
+
 app.post('/signup', (req, res) => {
   const { email, password } = req.body;
   const users = loadUsers();
@@ -53,32 +57,32 @@ app.post('/signup', (req, res) => {
   saveUsers(users);
   res.json({ success: true });
 });
+
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
   const users = loadUsers();
 
   const user = users.find(u => u.email === email && u.password === password);
-  if (user) {
-    res.json({ success: true });
-  } else {
-    res.json({ success: false, message: 'Invalid credentials' });
-  }
+  res.json({ success: !!user, message: user ? null : 'Invalid credentials' });
 });
+
+// ✍️ Resume + Cover Letter Generation
 app.post('/generate', async (req, res) => {
   const { name, education, experience, jobRole } = req.body;
 
-  const prompt = `Create a professional Resume and Cover Letter for the following:
+  const prompt = `Create a professional Resume and Cover Letter in the exact format below:
+
+[Resume]
+<resume content>
+
+[Cover Letter]
+<cover letter content>
+
+Details:
 Name: ${name}
 Education: ${education}
 Experience: ${experience}
-Job Role: ${jobRole}
-
-Format as:
-Resume:
-...
-
-Cover Letter:
-...`;
+Job Role: ${jobRole}`;
 
   try {
     const token = await getIBMIAMToken(process.env.IBM_API_KEY);
@@ -86,7 +90,7 @@ Cover Letter:
     const response = await axios.post(
       'https://us-south.ml.cloud.ibm.com/ml/v1/text/generation?version=2024-05-01',
       {
-        model_id: 'meta-llama/llama-2-13b-chat', 
+        model_id: 'meta-llama/llama-2-13b-chat',
         input: prompt,
         parameters: {
           decoding_method: 'greedy',
@@ -103,11 +107,29 @@ Cover Letter:
     );
 
     const output = response.data.results[0]?.generated_text || '';
-    const [resume, coverLetter] = output.split(/Cover Letter:/i);
+    let resume = '', coverLetter = '';
+
+    const coverIndex = output.search(/(\[Cover Letter\]|Cover Letter Content:|Cover Letter:)/i);
+    if (coverIndex !== -1) {
+      resume = output.slice(0, coverIndex).replace(/\[Resume\]/i, '').trim();
+      coverLetter = output.slice(coverIndex).replace(/(\[Cover Letter\]|Cover Letter Content:|Cover Letter:)/i, '').trim();
+    } else {
+      resume = output.trim();
+    }
+    const secondResumeIndex = resume.toLowerCase().indexOf("resume:", 10);
+    if (secondResumeIndex !== -1) {
+      resume = resume.slice(0, secondResumeIndex).trim();
+    }
+
+    const skillMatches = [...resume.matchAll(/Skills:/gi)];
+    if (skillMatches.length > 1) {
+      const secondSkillIndex = skillMatches[1].index;
+      resume = resume.slice(0, secondSkillIndex).trim();
+    }
 
     res.json({
-      resume: resume?.replace(/^Resume:/i, '').trim(),
-      coverLetter: coverLetter?.trim() || 'Cover letter not found.',
+      resume,
+      coverLetter: coverLetter || "Cover letter not generated.",
     });
   } catch (err) {
     console.error('❌ IBM API Error:', err.response?.data || err.message);
@@ -118,5 +140,5 @@ Cover Letter:
 });
 
 app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
+  console.log(`✅ Server running on http://localhost:${port}`);
 });

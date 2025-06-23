@@ -1,4 +1,3 @@
-
 // 🔄 Toggle Login & Signup
 document.querySelector(".toggle-signup")?.addEventListener("click", () => {
   document.getElementById("loginSection").style.display = "none";
@@ -9,6 +8,7 @@ document.querySelector(".toggle-login")?.addEventListener("click", () => {
   document.getElementById("signupSection").style.display = "none";
   document.getElementById("loginSection").style.display = "block";
 });
+
 // 🔐 Handle Login
 document.getElementById("login")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -32,6 +32,7 @@ document.getElementById("login")?.addEventListener("submit", async (e) => {
     alert("Error: " + err.message);
   }
 });
+
 // ✍️ Handle Signup
 document.getElementById("signup")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -57,6 +58,7 @@ document.getElementById("signup")?.addEventListener("submit", async (e) => {
     alert("Error: " + err.message);
   }
 });
+
 // 🤖 Resume & Cover Letter Generator
 document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -71,9 +73,8 @@ document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
   const coverLetter = document.getElementById("coverLetter");
   const error = document.getElementById("error");
 
-  // Loading display
-  resume.textContent = "Generating resume...";
-  coverLetter.textContent = "Generating cover letter...";
+  resume.innerHTML = "<pre>Generating resume...</pre>";
+  coverLetter.innerHTML = "<pre>Generating cover letter...</pre>";
   error.textContent = "";
   output.style.display = "block";
 
@@ -87,32 +88,49 @@ document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      resume.textContent = data.resume || "Resume not generated.";
-      coverLetter.textContent = data.coverLetter || "Cover letter not generated.";
+      resume.innerHTML = `<pre>${data.resume?.trim() || "Resume not generated."}</pre>`;
+      coverLetter.innerHTML = `<pre>${data.coverLetter?.trim() || "Cover letter not generated."}</pre>`;
       output.scrollIntoView({ behavior: "smooth" });
     } else {
       throw new Error(data.error || "Failed to generate content.");
     }
   } catch (err) {
-    resume.textContent = "";
-    coverLetter.textContent = "";
+    resume.innerHTML = "";
+    coverLetter.innerHTML = "";
     error.textContent = "❌ " + err.message;
   }
 });
-// 📥 Download Resume/Cover as PDF
+
+// 📥 Download PDF
 function downloadAsPDF(title, content) {
   const win = window.open('', '', 'height=700,width=700');
-  win.document.write(`<html><head><title>${title}</title></head><body style="font-family:Arial;padding:20px;"><h1>${title}</h1><pre style="white-space:pre-wrap;">${content}</pre></body></html>`);
+  win.document.write(`
+    <html>
+      <head><title>${title}</title></head>
+      <body style="font-family:Arial;padding:20px;">
+        <h1>${title}</h1>
+        <pre style="white-space:pre-wrap;">${content}</pre>
+      </body>
+    </html>
+  `);
   win.document.close();
   win.print();
 }
 
 document.getElementById("downloadResume")?.addEventListener("click", () => {
-  const text = document.getElementById("resume").textContent;
-  downloadAsPDF("Resume", text);
+  const text = document.getElementById("resume").textContent.trim();
+  if (!text || text.includes("not generated")) {
+    alert("No resume available to download.");
+  } else {
+    downloadAsPDF("Resume", text);
+  }
 });
 
 document.getElementById("downloadCover")?.addEventListener("click", () => {
-  const text = document.getElementById("coverLetter").textContent;
-  downloadAsPDF("Cover Letter", text);
+  const text = document.getElementById("coverLetter").textContent.trim();
+  if (!text || text.includes("not generated")) {
+    alert("No cover letter available to download.");
+  } else {
+    downloadAsPDF("Cover Letter", text);
+  }
 });
