@@ -1,54 +1,63 @@
-function showLogin() {
-  document.getElementById("slider").style.transform = "translateX(0%)";
-  document.getElementById("loginToggle").classList.add("active");
-  document.getElementById("signupToggle").classList.remove("active");
-}
 
-function showSignup() {
-  document.getElementById("slider").style.transform = "translateX(-50%)";
-  document.getElementById("signupToggle").classList.add("active");
-  document.getElementById("loginToggle").classList.remove("active");
-}
+// 🔄 Toggle Login & Signup
+document.querySelector(".toggle-signup")?.addEventListener("click", () => {
+  document.getElementById("loginSection").style.display = "none";
+  document.getElementById("signupSection").style.display = "block";
+});
 
+document.querySelector(".toggle-login")?.addEventListener("click", () => {
+  document.getElementById("signupSection").style.display = "none";
+  document.getElementById("loginSection").style.display = "block";
+});
+// 🔐 Handle Login
 document.getElementById("login")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("loginEmail").value;
-  const password = document.getElementById("loginPassword").value;
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value.trim();
 
-  const res = await fetch("/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const data = await res.json();
-  if (data.success) {
-    window.location.href = "/home.html";
-  } else {
-    alert("Login failed.");
+    const data = await res.json();
+    if (data.success) {
+      window.location.href = "/home.html";
+    } else {
+      alert(data.message || "Login failed. Please check your credentials.");
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
   }
 });
-
+// ✍️ Handle Signup
 document.getElementById("signup")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("signupEmail").value;
-  const password = document.getElementById("signupPassword").value;
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value.trim();
 
-  const res = await fetch("/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    const res = await fetch("/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const data = await res.json();
-  if (data.success) {
-    alert("Signup successful! Please login.");
-    showLogin();
-  } else {
-    alert("Signup failed.");
+    const data = await res.json();
+    if (data.success) {
+      alert("Signup successful! Please login.");
+      document.getElementById("signupSection").style.display = "none";
+      document.getElementById("loginSection").style.display = "block";
+    } else {
+      alert(data.message || "Signup failed. Try a different email.");
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
   }
 });
-
+// 🤖 Resume & Cover Letter Generator
 document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -62,6 +71,7 @@ document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
   const coverLetter = document.getElementById("coverLetter");
   const error = document.getElementById("error");
 
+  // Loading display
   resume.textContent = "Generating resume...";
   coverLetter.textContent = "Generating cover letter...";
   error.textContent = "";
@@ -77,33 +87,32 @@ document.getElementById("resumeForm")?.addEventListener("submit", async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      resume.textContent = data.resume;
-      coverLetter.textContent = data.coverLetter;
+      resume.textContent = data.resume || "Resume not generated.";
+      coverLetter.textContent = data.coverLetter || "Cover letter not generated.";
       output.scrollIntoView({ behavior: "smooth" });
     } else {
-      throw new Error(data.error || "Generation failed");
+      throw new Error(data.error || "Failed to generate content.");
     }
   } catch (err) {
+    resume.textContent = "";
+    coverLetter.textContent = "";
     error.textContent = "❌ " + err.message;
   }
 });
-
-function downloadTextFile(filename, textContent) {
-  const blob = new Blob([textContent], { type: "text/plain" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+// 📥 Download Resume/Cover as PDF
+function downloadAsPDF(title, content) {
+  const win = window.open('', '', 'height=700,width=700');
+  win.document.write(`<html><head><title>${title}</title></head><body style="font-family:Arial;padding:20px;"><h1>${title}</h1><pre style="white-space:pre-wrap;">${content}</pre></body></html>`);
+  win.document.close();
+  win.print();
 }
 
 document.getElementById("downloadResume")?.addEventListener("click", () => {
   const text = document.getElementById("resume").textContent;
-  downloadTextFile("Resume.txt", text);
+  downloadAsPDF("Resume", text);
 });
 
 document.getElementById("downloadCover")?.addEventListener("click", () => {
   const text = document.getElementById("coverLetter").textContent;
-  downloadTextFile("CoverLetter.txt", text);
+  downloadAsPDF("Cover Letter", text);
 });
