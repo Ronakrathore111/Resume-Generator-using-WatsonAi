@@ -70,19 +70,27 @@ app.post('/login', (req, res) => {
 app.post('/generate', async (req, res) => {
   const { name, education, experience, jobRole } = req.body;
 
-  const prompt = `Create a professional Resume and Cover Letter in the exact format below:
+  const prompt = `
+You are a professional AI assistant that creates job-specific resumes and cover letters.
 
-[Resume]
-<resume content>
+Please create the following documents based on the user-provided information:
+- A clean, formal **Resume**
+- A well-crafted **Cover Letter**
 
-[Cover Letter]
-<cover letter content>
+Use this user info:
+- Name: ${name}
+- Education: ${education}
+- Experience: ${experience}
+- Target Job Role: ${jobRole}
 
-Details:
-Name: ${name}
-Education: ${education}
-Experience: ${experience}
-Job Role: ${jobRole}`;
+Structure the output like this:
+
+Resume:
+[Insert professional resume with bullets, sections like Summary, Education, Experience, Skills]
+
+Cover Letter:
+[Insert cover letter with proper salutation, paragraphs and signature]
+`;
 
   try {
     const token = await getIBMIAMToken(process.env.IBM_API_KEY);
@@ -90,54 +98,36 @@ Job Role: ${jobRole}`;
     const response = await axios.post(
       'https://us-south.ml.cloud.ibm.com/ml/v1/text/generation?version=2024-05-01',
       {
-        model_id: 'meta-llama/llama-2-13b-chat',
+        model_id: "mistralai/mixtral-8x7b-instruct-v01",
         input: prompt,
         parameters: {
-          decoding_method: 'greedy',
-          max_new_tokens: 800,
+          decoding_method: "greedy",
+          max_new_tokens: 1000,
         },
-        project_id: process.env.IBM_PROJECT_ID,
+        project_id: process.env.IBM_PROJECT_ID
       },
       {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-        },
+        }
       }
     );
 
-    const output = response.data.results[0]?.generated_text || '';
-    let resume = '', coverLetter = '';
-
-    const coverIndex = output.search(/(\[Cover Letter\]|Cover Letter Content:|Cover Letter:)/i);
-    if (coverIndex !== -1) {
-      resume = output.slice(0, coverIndex).replace(/\[Resume\]/i, '').trim();
-      coverLetter = output.slice(coverIndex).replace(/(\[Cover Letter\]|Cover Letter Content:|Cover Letter:)/i, '').trim();
-    } else {
-      resume = output.trim();
-    }
-    const secondResumeIndex = resume.toLowerCase().indexOf("resume:", 10);
-    if (secondResumeIndex !== -1) {
-      resume = resume.slice(0, secondResumeIndex).trim();
-    }
-
-    const skillMatches = [...resume.matchAll(/Skills:/gi)];
-    if (skillMatches.length > 1) {
-      const secondSkillIndex = skillMatches[1].index;
-      resume = resume.slice(0, secondSkillIndex).trim();
-    }
+    const output = response.data.results[0]?.generated_text || "";
+    const [resume, coverLetter] = output.split(/Cover Letter:/i);
 
     res.json({
-      resume,
-      coverLetter: coverLetter || "Cover letter not generated.",
+      resume: resume?.replace(/^Resume:/i, '').trim(),
+      coverLetter: coverLetter?.trim() || "Cover letter not found.",
     });
+
   } catch (err) {
     console.error('❌ IBM API Error:', err.response?.data || err.message);
-    res.status(500).json({
-      error: 'Generation failed or model limit exceeded. Please try later.',
-    });
+    res.status(500).json({ error: "Generation failed or model limit exceeded. Please try again." });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`✅ Server running on http://localhost:${port}`);
